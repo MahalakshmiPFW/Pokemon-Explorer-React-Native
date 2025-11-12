@@ -1,7 +1,16 @@
-import { useEffect } from "react";
-import { Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, Text, View } from "react-native";
+
+// We will define an interface for the Pokemon object that we will be fetching from the API. This will help us to type our state variable and make sure that we are getting the correct data from the API.
+interface Pokemon {
+  name: string;
+  url: string;
+}
 
 export default function Index() {
+  // we will use the useState hook to store the list of pokemons in state. We will initialize it as undefined, and then set it to the data we get from the API when we fetch it.
+  // pokemons is the actual value of the variable and setPokemons is the function that we will use to update the value of pokemons. We will call this function when we get the data from the API and want to store it in state.
+  const [pokemons, setPokemons] = useState<Pokemon[]>([]);
   
   //when i load the app, i want to fetch the list of pokemon from the pokeapi and store it in state. I will use react hooks to do this. 
   // I will use the useEffect hook to fetch the data when the component mount (allows us to run code when the screen mounts), and I will 
@@ -22,21 +31,19 @@ export default function Index() {
       //so we can abstract the data and get the results property which is an array of pokemons (by using await).
       const data = await response.json();
 
-      console.log(data);
+      setPokemons(data.results);
     } catch(e) {
       console.log("Error fetching pokemons: ", e);
     }
   }
   
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Pokémon Explorer</Text>
-    </View>
+    <ScrollView>
+      {pokemons.map((pokemon) => (
+        <View key={pokemon.name}>
+          <Text>{pokemon.name}</Text>
+        </View>
+      ))}
+    </ScrollView>
   );
 }
