@@ -25,11 +25,26 @@ export default function Index() {
       // fetch is a function that allows us to hit an api. It takes an url as a parameter and then some request info (like method, headers, body, etc). It returns a response object that we can then parse to get the data we need.
       // It is a simple GET request
       const response = await fetch(
-        "https://pokeapi.co/api/v2/pokemon/?limit=20"
+        "https://pokeapi.co/api/v2/pokemon/?limit=10"
       );
+
       // once we get a response, its going to come in a JSON format
       //so we can abstract the data and get the results property which is an array of pokemons (by using await).
       const data = await response.json();
+
+      // we will use Promise.all to fetch the details of each pokemon in parallel. This will allow us to get the details of all pokemons at once, instead of waiting for each one to finish before starting the next one.
+      const detailedPokemons = await Promise.all(
+        data.results.map(async (pokemon: Pokemon) => {
+          const res = await fetch(pokemon.url);
+          const details = await res.json();
+          return {
+            name: pokemon.name,
+            image: details.sprites.front_default, //main sprite of the pokemon
+          };
+        })
+      );
+
+      console.log("Detailed Pokemons: ", detailedPokemons);
 
       setPokemons(data.results);
     } catch(e) {
