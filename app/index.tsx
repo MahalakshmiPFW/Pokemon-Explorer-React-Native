@@ -17,7 +17,6 @@ interface PokemonType {
   }
 }
 
-
 export default function Index() {
   // we will use the useState hook to store the list of pokemons in state. We will initialize it as undefined, and then set it to the data we get from the API when we fetch it.
   // pokemons is the actual value of the variable and setPokemons is the function that we will use to update the value of pokemons. We will call this function when we get the data from the API and want to store it in state.
@@ -74,7 +73,7 @@ export default function Index() {
       {pokemons.map((pokemon) => (
         <View key={pokemon.name}>
           <Text style={styles.name}>{pokemon.name}</Text>
-          <Text>{pokemon.types[0].type.name}</Text>
+          <Text style={styles.type}>{pokemon.types[0].type.name}</Text>
           <View
           style={{
             flexDirection: "row",
@@ -107,8 +106,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   type: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: 'grey',
   },
 });
