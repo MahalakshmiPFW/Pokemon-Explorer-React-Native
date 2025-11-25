@@ -53,6 +53,7 @@ export default function Index() {
   // we will use the useEffect hook to fetch the data from the API when the component mounts. This will allow us to run the code that fetches the data when the screen loads.
   // we will also use the useEffect hook to log the first pokemon in the list to the console, so we can see what data we are getting from the API.
   console.log(JSON.stringify(pokemons[0], null, 2));
+  const [error, setError] = useState<string | null>(null);
   
   //when i load the app, i want to fetch the list of pokemon from the pokeapi and store it in state. I will use react hooks to do this. 
   // I will use the useEffect hook to fetch the data when the component mount (allows us to run code when the screen mounts), and I will 
@@ -64,20 +65,28 @@ export default function Index() {
 
   async function fetchPokemons() {
     try {
+      setError(null);
       // fetch is a function that allows us to hit an api. It takes an url as a parameter and then some request info (like method, headers, body, etc). It returns a response object that we can then parse to get the data we need.
       // It is a simple GET request
       const response = await fetch(
         "https://pokeapi.co/api/v2/pokemon/?limit=10"
       );
 
+      if (!response.ok) {
+        throw new Error(`List request failed: ${response.status}`);
+      }
+
       // once we get a response, its going to come in a JSON format
       //so we can abstract the data and get the results property which is an array of pokemons (by using await).
       const data = await response.json();
 
-      // we will use Promise.all to fetch the details of each pokemon in parallel. This will allow us to get the details of all pokemons at once, instead of waiting for each one to finish before starting the next one.
-      const detailedPokemons = await Promise.all(
+      // we will use Promise.allSettled to fetch the details of each pokemon in parallel. If any single request fails, we still show the rest.
+      const detailResults = await Promise.allSettled(
         data.results.map(async (pokemon: PokemonListItem) => {
           const res = await fetch(pokemon.url);
+          if (!res.ok) {
+            throw new Error(`Detail failed: ${res.status} for ${pokemon.name}`);
+          }
           const details = await res.json();
           return {
             name: pokemon.name,
@@ -88,11 +97,16 @@ export default function Index() {
         })
       );
 
+      const detailedPokemons = detailResults
+        .filter((result): result is PromiseFulfilledResult<Pokemon> => result.status === "fulfilled")
+        .map((result) => result.value);
+
       console.log("Detailed Pokemons: ", detailedPokemons);
 
       setPokemons(detailedPokemons);
     } catch(e) {
       console.log("Error fetching pokemons: ", e);
+      setError("Could not reach PokeAPI. Please check your network and pull to refresh.");
     }
   }
   
@@ -103,6 +117,9 @@ export default function Index() {
         padding: 16,
       }}
     >
+      {!!error && (
+        <Text style={styles.error}>{error}</Text>
+      )}
       {pokemons.map((pokemon) => (
         // Navigates to the pok_details.tsx file when pressed
         <Link key={pokemon.name}
@@ -157,6 +174,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     color: 'grey',
+    textAlign: 'center',
+  },
+  error: {
+    color: 'red',
+    fontWeight: 'bold',
     textAlign: 'center',
   },
 });
