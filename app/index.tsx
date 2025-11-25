@@ -1,7 +1,7 @@
+import { Link } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
-// We will define an interface for the Pokemon object that we will be fetching from the API. This will help us to type our state variable and make sure that we are getting the correct data from the API.
 interface Pokemon {
   name: string;
   image: string;
@@ -16,6 +16,34 @@ interface PokemonType {
     url: string;
   }
 }
+// Data returned from the first list call includes the url for details
+interface PokemonListItem {
+  name: string;
+  url: string;
+}
+
+// based on the type we could define the colors we want to use for each type
+//an object that would return the color that we should use based on the type of pokemon
+const colorsByType: Record<string, string> = {
+  normal: "#A8A77A",
+  fire: "#EE8130",
+  water: "#6390F0",
+  electric: "#F7D02C",
+  grass: "#7AC74C",
+  ice: "#96D9D6",
+  fighting: "#C22E28",
+  poison: "#A33EA1",
+  ground: "#E2BF65",
+  flying: "#A98FF3",
+  psychic: "#F95587",
+  bug: "#A6B91A",
+  rock: "#B6A136",
+  ghost: "#735797",
+  dragon: "#6F35FC",
+  dark: "#705746",
+  steel: "#B7B7CE",
+  fairy: "#D685AD",
+};
 
 export default function Index() {
   // we will use the useState hook to store the list of pokemons in state. We will initialize it as undefined, and then set it to the data we get from the API when we fetch it.
@@ -47,9 +75,9 @@ export default function Index() {
       const data = await response.json();
 
       // we will use Promise.all to fetch the details of each pokemon in parallel. This will allow us to get the details of all pokemons at once, instead of waiting for each one to finish before starting the next one.
-      const detailedPokemons = await Promise.any(
-        data.results.map(async (pokemon: Pokemon) => {
-          const res = await fetch(pokemon.image);
+      const detailedPokemons = await Promise.all(
+        data.results.map(async (pokemon: PokemonListItem) => {
+          const res = await fetch(pokemon.url);
           const details = await res.json();
           return {
             name: pokemon.name,
@@ -62,36 +90,54 @@ export default function Index() {
 
       console.log("Detailed Pokemons: ", detailedPokemons);
 
-      setPokemons(data.results);
+      setPokemons(detailedPokemons);
     } catch(e) {
       console.log("Error fetching pokemons: ", e);
     }
   }
   
   return (
-    <ScrollView>
+    <ScrollView
+      contentContainerStyle={{
+        gap: 16,
+        padding: 16,
+      }}
+    >
       {pokemons.map((pokemon) => (
-        <View key={pokemon.name}>
-          <Text style={styles.name}>{pokemon.name}</Text>
-          <Text style={styles.type}>{pokemon.types[0].type.name}</Text>
-          <View
+        // Navigates to the pok_details.tsx file when pressed
+        <Link key={pokemon.name}
+          href="/pok_details"
           style={{
-            flexDirection: "row",
-            justifyContent: "space-around",
-            alignItems: "center",
-          }}
-          >
+              // @ts-ignore
+              // as we are limiting ourselves to this list of pokemons, we can be sure that the type will exist in our colorsByType object
+              // + 50 is to make the color a bit lighter (opacity)
+              backgroundColor: colorsByType[pokemon.types[0].type.name] + 50,
+              padding: 20,
+              borderRadius: 20,
+            }}
+        >
+          <View>
+            <Text style={styles.name}>{pokemon.name}</Text>
+            <Text style={styles.type}>{pokemon.types[0].type.name}</Text>
+            <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              alignItems: "center",
+            }}
+            >
 
+              <Image
+            source={{uri: pokemon.image}}
+            style={{ width: 150, height: 150 }}
+            />
             <Image
-          source={{uri: pokemon.image}}
-          style={{ width: 150, height: 150 }}
-          />
-          <Image
-          source={{uri: pokemon.imageBack}}
-          style={{ width: 150, height: 150 }}
-          />
+            source={{uri: pokemon.imageBack}}
+            style={{ width: 150, height: 150 }}
+            />
+            </View>
           </View>
-        </View>
+        </Link>
       ))}
     </ScrollView>
   );
@@ -104,11 +150,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 10,
+    textAlign: 'center',
   },
   type: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
     color: 'grey',
+    textAlign: 'center',
   },
 });
