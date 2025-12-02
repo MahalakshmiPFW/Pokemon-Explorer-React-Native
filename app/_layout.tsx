@@ -15,6 +15,9 @@ export default function RootLayout() {
         options={{ 
           title: "Pokemon Details", 
           headerBackButtonDisplayMode: "minimal",
+          presentation: "formSheet", // Use formSheet presentation style which shows a modal-like screen
+          sheetAllowedDetents: [0.3, 0.5, 0.7], // Define detents for the sheet for different heights
+          sheetGrabberVisible: true, // Show grabber for better UX (indicates the screen can be swiped down)
         }}
       />
     </Stack>

@@ -49,6 +49,7 @@ export default function Index() {
   // we will use the useState hook to store the list of pokemons in state. We will initialize it as undefined, and then set it to the data we get from the API when we fetch it.
   // pokemons is the actual value of the variable and setPokemons is the function that we will use to update the value of pokemons. We will call this function when we get the data from the API and want to store it in state.
   const [pokemons, setPokemons] = useState<Pokemon[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // we will use the useEffect hook to fetch the data from the API when the component mounts. This will allow us to run the code that fetches the data when the screen loads.
   // we will also use the useEffect hook to log the first pokemon in the list to the console, so we can see what data we are getting from the API.
@@ -104,8 +105,10 @@ export default function Index() {
       console.log("Detailed Pokemons: ", detailedPokemons);
 
       setPokemons(detailedPokemons);
+      setLoading(false);
     } catch(e) {
       console.log("Error fetching pokemons: ", e);
+      setLoading(false);
       setError("Could not reach PokeAPI. Please check your network and pull to refresh.");
     }
   }
@@ -117,13 +120,20 @@ export default function Index() {
         padding: 16,
       }}
     >
+      {loading && !error && (
+        <Text style={styles.status}>Loading pokemons…</Text>
+      )}
       {!!error && (
         <Text style={styles.error}>{error}</Text>
+      )}
+      {!loading && pokemons.length === 0 && !error && (
+        <Text style={styles.status}>No pokemons to show right now.</Text>
       )}
       {pokemons.map((pokemon) => (
         // Navigates to the pok_details.tsx file when pressed
         <Link key={pokemon.name}
-          href="/pok_details"
+        // we pass the name of the pokemon as a param to the pok_details screen
+          href={{pathname: "/pok_details", params: { name: pokemon.name }}}
           style={{
               // @ts-ignore
               // as we are limiting ourselves to this list of pokemons, we can be sure that the type will exist in our colorsByType object
@@ -180,5 +190,9 @@ const styles = StyleSheet.create({
     color: 'red',
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  status: {
+    textAlign: 'center',
+    color: 'grey',
   },
 });
