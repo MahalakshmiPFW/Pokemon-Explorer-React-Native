@@ -6,7 +6,8 @@ export default function RootLayout() {
       <Stack.Screen 
         name="index" 
         options={{ 
-          title: "Home" 
+          title: "Pokemon Explorer",
+          headerShown: false, // hide native header to avoid double header with custom UI
         }}
       />
 
