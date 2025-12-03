@@ -84,7 +84,7 @@ export default function Index() {
       // fetch is a function that allows us to hit an api. It takes an url as a parameter and then some request info (like method, headers, body, etc). It returns a response object that we can then parse to get the data we need.
       // It is a simple GET request
       const response = await fetch(
-        "https://pokeapi.co/api/v2/pokemon/?limit=20"
+        "https://pokeapi.co/api/v2/pokemon/?limit=25"
       );
 
       if (!response.ok) {
