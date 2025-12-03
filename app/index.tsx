@@ -241,7 +241,7 @@ export default function Index() {
               key={pokemon.name}
               href={{
                 pathname: "/pok_details",
-                params: { name: pokemon.name },
+                params: { name: pokemon.name, type: mainType },
               }}
               style={[styles.card, { backgroundColor: cardColor }]}
             >

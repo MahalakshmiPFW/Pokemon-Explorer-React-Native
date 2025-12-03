@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,7 +21,30 @@ interface PokemonDetails {
   height: number;
   weight: number;
   description?: string;
+  stats: { name: string; value: number }[];
 }
+
+// Shared type-color map so we can theme the screen per Pokémon.
+const colorsByType: Record<string, string> = {
+  normal: "#A8A77A",
+  fire: "#EE8130",
+  water: "#6390F0",
+  electric: "#F7D02C",
+  grass: "#7AC74C",
+  ice: "#96D9D6",
+  fighting: "#C22E28",
+  poison: "#A33EA1",
+  ground: "#E2BF65",
+  flying: "#A98FF3",
+  psychic: "#F95587",
+  bug: "#A6B91A",
+  rock: "#B6A136",
+  ghost: "#735797",
+  dragon: "#6F35FC",
+  dark: "#705746",
+  steel: "#B7B7CE",
+  fairy: "#D685AD",
+};
 
 export default function Pok_Details() {
   // Grab the name passed in from the list screen so we can fetch the right Pokémon.
@@ -29,6 +53,9 @@ export default function Pok_Details() {
   const [details, setDetails] = useState<PokemonDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "forms" | "types" | "stats" | "weight"
+  >("forms");
 
   useEffect(() => {
     if (params.name) {
@@ -68,6 +95,12 @@ export default function Pok_Details() {
         height: data.height,
         weight: data.weight,
         description: englishFlavor?.replace(/\f/g, " "),
+        stats: data.stats.map(
+          (statObj: { stat: { name: string }; base_stat: number }) => ({
+            name: statObj.stat.name,
+            value: statObj.base_stat,
+          })
+        ),
       });
     } catch (e) {
       console.log("Error fetching details: ", e);
@@ -85,6 +118,21 @@ export default function Pok_Details() {
     return details.name.charAt(0).toUpperCase() + details.name.slice(1);
   }, [details?.name]);
 
+  // Helper to lightly tint a hex color; keeps the UI soft like the mock.
+  const addAlpha = (hex: string, alpha: string) =>
+    hex.length === 7 ? `${hex}${alpha}` : hex;
+  const primaryType = (params.type as string) || details?.types[0] || "";
+  const primaryColor = colorsByType[primaryType] || "#c1d5df";
+  const surfaceTint = addAlpha(primaryColor, "22");
+  const cardTint = addAlpha(primaryColor, "55");
+
+  const tabs: { key: typeof activeTab; label: string }[] = [
+    { key: "forms", label: "Forms" },
+    { key: "types", label: "Types" },
+    { key: "stats", label: "Stats" },
+    { key: "weight", label: "Weight" },
+  ];
+
   return (
     <>
       <Stack.Screen
@@ -93,7 +141,10 @@ export default function Pok_Details() {
           headerShown: false, // hide default navigation bar so we only see the custom one below
         }}
       />
-      <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={[styles.page, { backgroundColor: surfaceTint }]}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.headerRow}>
           <Ionicons
             name="arrow-back"
@@ -118,7 +169,7 @@ export default function Pok_Details() {
 
         {details && (
           <>
-            <View style={styles.heroCard}>
+            <View style={[styles.heroCard, { backgroundColor: cardTint }]}>
               <Image
                 source={{ uri: details.artwork }}
                 style={styles.heroImage}
@@ -127,30 +178,93 @@ export default function Pok_Details() {
             </View>
 
             <View style={styles.tabRow}>
-              <Text style={[styles.tab, styles.tabActive]}>Forms</Text>
-              <Text style={styles.tab}>Detail</Text>
-              <Text style={styles.tab}>Types</Text>
-              <Text style={styles.tab}>Stats</Text>
-              <Text style={styles.tab}>Weight</Text>
+              {tabs.map((tab) => {
+                const active = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => setActiveTab(tab.key)}
+                    style={styles.tabButton}
+                  >
+                    <Text style={[styles.tab, active && styles.tabActive]}>
+                      {tab.label}
+                    </Text>
+                    {active && <View style={styles.tabUnderline} />}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.formsRow}
-            >
-              {details.forms.map((form) => (
-                <View key={form} style={styles.formCard}>
-                  <Image
-                    source={{ uri: form }}
-                    style={styles.formImage}
-                    resizeMode="contain"
-                  />
-                </View>
-              ))}
-            </ScrollView>
+            {activeTab === "forms" && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.formsRow}
+              >
+                {details.forms.map((form) => (
+                  <View key={form} style={styles.formCard}>
+                    <Image
+                      source={{ uri: form }}
+                      style={styles.formImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            )}
 
-            <View style={styles.infoCard}>
+            {activeTab === "types" && (
+              <View style={[styles.infoCard, { backgroundColor: cardTint }]}>
+                <Text style={styles.sectionTitle}>Types</Text>
+                <View style={styles.chipRow}>
+                  {details.types.map((type) => (
+                    <View key={type} style={styles.chip}>
+                      <Text style={styles.chipText}>{type}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {activeTab === "stats" && (
+              <View style={[styles.infoCard, { backgroundColor: cardTint }]}>
+                <Text style={styles.sectionTitle}>Stats</Text>
+                {details.stats.map((stat) => (
+                  <View key={stat.name} style={styles.statRow}>
+                    <Text style={styles.statLabel}>{stat.name}</Text>
+                    <View style={styles.statBarTrack}>
+                      <View
+                        style={[
+                          styles.statBarFill,
+                          { width: `${Math.min(stat.value, 150) / 1.5}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.statValue}>{stat.value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {activeTab === "weight" && (
+              <View style={[styles.infoCard, { backgroundColor: cardTint }]}>
+                <Text style={styles.sectionTitle}>Size & Weight</Text>
+                <View style={styles.chipRow}>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>
+                      Height: {details.height / 10}m
+                    </Text>
+                  </View>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>
+                      Weight: {details.weight / 10}kg
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <View style={[styles.infoCard, { backgroundColor: cardTint }]}>
               <Text style={styles.sectionTitle}>Quick Facts</Text>
               <View style={styles.chipRow}>
                 {details.types.map((type) => (
@@ -169,7 +283,9 @@ export default function Pok_Details() {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.sectionTitle}>Mega Evolution</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 10 }]}>
+                Story
+              </Text>
               <Text style={styles.description}>
                 {details.description ||
                   "In order to support its flower, it grows sturdy legs and a thicker body as it evolves."}
@@ -233,12 +349,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
   },
+  tabButton: {
+    alignItems: "center",
+  },
   tab: {
     color: "#7b8d98",
     fontWeight: "700",
   },
   tabActive: {
     color: "#2F3E46",
+  },
+  tabUnderline: {
+    marginTop: 4,
+    height: 3,
+    width: "100%",
+    backgroundColor: "#2F3E46",
+    borderRadius: 2,
   },
   formsRow: {
     gap: 10,
@@ -284,6 +410,35 @@ const styles = StyleSheet.create({
   chipText: {
     fontWeight: "700",
     color: "#2F3E46",
+  },
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  statLabel: {
+    width: 80,
+    color: "#2F3E46",
+    fontWeight: "700",
+    textTransform: "capitalize",
+  },
+  statBarTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: "#d7e4eb",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  statBarFill: {
+    height: 8,
+    backgroundColor: "#2F3E46",
+  },
+  statValue: {
+    width: 40,
+    textAlign: "right",
+    color: "#2F3E46",
+    fontWeight: "700",
   },
   description: {
     color: "#495662",
