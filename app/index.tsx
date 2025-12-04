@@ -169,7 +169,7 @@ export default function Index() {
           <Text style={styles.greeting}>Hi there! 👋</Text>
           <Text style={styles.title}>Pokemon Explorer</Text>
           <Text style={styles.subtitle}>
-            Welcome to your cozy Pokédex corner—search by name or National number and let's catch 'em all.
+            Welcome to your cozy Pokémon corner—search by name or National number and let's catch 'em all.
           </Text>
         </View>
 
