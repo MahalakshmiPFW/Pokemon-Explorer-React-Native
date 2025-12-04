@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Pokemon {
   name: string;
@@ -162,106 +163,112 @@ export default function Index() {
     name.charAt(0).toUpperCase() + name.slice(1);
   
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hi there! 👋</Text>
-        <Text style={styles.title}>Pokemon Explorer</Text>
-        <Text style={styles.subtitle}>
-          Welcome to your cozy Pokédex corner—search by name or National number and let's catch 'em all.
-        </Text>
-      </View>
-
-      <View style={styles.searchRow}>
-        <Ionicons name="search" size={18} color="#8BA0AE" />
-        <TextInput
-          placeholder="Name or number"
-          placeholderTextColor="#8BA0AE"
-          value={search}
-          onChangeText={setSearch}
-          style={styles.searchInput}
-        />
-        <TouchableOpacity
-          onPress={() => setFilterOpen((prev) => !prev)}
-          style={styles.filterBadge}
-          accessibilityLabel="Toggle filters"
-        >
-          <Ionicons name="options" size={18} color="#2F3E46" />
-        </TouchableOpacity>
-      </View>
-
-      {filterOpen && (
-        <View style={styles.filterPanel}>
-          <Text style={styles.filterTitle}>Filter by</Text>
-          <View style={styles.filterRow}>
-            {[
-              { key: "name", label: "Name" },
-              { key: "type", label: "Type" },
-              { key: "power", label: "Most Powerful" },
-            ].map((option) => {
-              const active = filterMode === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  onPress={() => {
-                    setFilterMode(option.key as typeof filterMode);
-                    setFilterOpen(false); // close after picking
-                  }}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      active && styles.filterChipTextActive,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Hi there! 👋</Text>
+          <Text style={styles.title}>Pokemon Explorer</Text>
+          <Text style={styles.subtitle}>
+            Welcome to your cozy Pokédex corner—search by name or National number and let's catch 'em all.
+          </Text>
         </View>
-      )}
 
-      {loading && !error && (
-        <Text style={styles.status}>Loading pokémons…</Text>
-      )}
-      {!!error && <Text style={styles.error}>{error}</Text>}
-      {!loading && filteredPokemons.length === 0 && !error && (
-        <Text style={styles.status}>No pokémons match your search.</Text>
-      )}
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={18} color="#8BA0AE" />
+          <TextInput
+            placeholder="Name or number"
+            placeholderTextColor="#8BA0AE"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+          />
+          <TouchableOpacity
+            onPress={() => setFilterOpen((prev) => !prev)}
+            style={styles.filterBadge}
+            accessibilityLabel="Toggle filters"
+          >
+            <Ionicons name="options" size={18} color="#2F3E46" />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.grid}>
-        {filteredPokemons.map((pokemon) => {
-          const mainType = pokemon.types[0]?.type.name;
-          const cardColor = `${colorsByType[mainType] || "#A0AEC0"}33`; // light tint background
+        {filterOpen && (
+          <View style={styles.filterPanel}>
+            <Text style={styles.filterTitle}>Filter by</Text>
+            <View style={styles.filterRow}>
+              {[
+                { key: "name", label: "Name" },
+                { key: "type", label: "Type" },
+                { key: "power", label: "Most Powerful" },
+              ].map((option) => {
+                const active = filterMode === option.key;
+                return (
+                  <TouchableOpacity
+                    key={option.key}
+                    onPress={() => {
+                      setFilterMode(option.key as typeof filterMode);
+                      setFilterOpen(false); // close after picking
+                    }}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        active && styles.filterChipTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
-          return (
-            <Link
-              key={pokemon.name}
-              href={{
-                pathname: "/pok_details",
-                params: { name: pokemon.name, type: mainType },
-              }}
-              style={[styles.card, { backgroundColor: cardColor }]}
-            >
-              <Text style={styles.cardName}>{prettyName(pokemon.name)}</Text>
-              <Image
-                source={{ uri: pokemon.image }}
-                style={styles.cardImage}
-                resizeMode="contain"
-              />
-            </Link>
-          );
-        })}
-      </View>
-    </ScrollView>
+        {loading && !error && (
+          <Text style={styles.status}>Loading pokémons…</Text>
+        )}
+        {!!error && <Text style={styles.error}>{error}</Text>}
+        {!loading && filteredPokemons.length === 0 && !error && (
+          <Text style={styles.status}>No pokémons match your search.</Text>
+        )}
+
+        <View style={styles.grid}>
+          {filteredPokemons.map((pokemon) => {
+            const mainType = pokemon.types[0]?.type.name;
+            const cardColor = `${colorsByType[mainType] || "#A0AEC0"}33`; // light tint background
+
+            return (
+              <Link
+                key={pokemon.name}
+                href={{
+                  pathname: "/pok_details",
+                  params: { name: pokemon.name, type: mainType },
+                }}
+                style={[styles.card, { backgroundColor: cardColor }]}
+              >
+                <Text style={styles.cardName}>{prettyName(pokemon.name)}</Text>
+                <Image
+                  source={{ uri: pokemon.image }}
+                  style={styles.cardImage}
+                  resizeMode="contain"
+                />
+              </Link>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 //This takes an object of styles and you then start defining your styles. You can then use these styles in your components by referencing the style object 
 // and the name of the style you want to use. For ex., if you have a style called container, you can use it in your component like this: style={styles.container}.
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#d7e4eb",
+  },
   page: {
     flex: 1,
     backgroundColor: "#d7e4eb",
