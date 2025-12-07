@@ -1,50 +1,123 @@
-# Welcome to your Expo app 👋
+# Pokemon Explorer
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile application built with Expo that allows users to explore and discover Pokémon from the PokeAPI. This project was developed as a learning exercise to gain hands-on experience with React Native, TypeScript, and mobile app development.
 
-## Get started
+## Overview
 
-1. Install dependencies
+Pokemon Explorer is a cross-platform mobile application that provides an intuitive interface for browsing Pokémon data. Users can search, filter, and view detailed information about their favorite Pokémon, including stats, types, forms, and physical attributes.
 
+## Features
+
+- **Pokémon List View**: Browse a curated list of Pokémon with visual cards displaying names and sprites
+- **Search Functionality**: Search Pokémon by name or National Pokédex number
+- **Advanced Filtering**: Filter and sort Pokémon by:
+  - Name (alphabetical)
+  - Type (grouped by primary type)
+  - Power (sorted by base experience)
+- **Detailed Pokémon View**: Access comprehensive information including:
+  - Official artwork and multiple sprite forms
+  - Type classifications with color-coded themes
+  - Base statistics with visual progress bars
+  - Physical attributes (height and weight)
+  - Flavor text descriptions
+- **Responsive Design**: Clean, modern UI with type-based color theming for an enhanced user experience
+- **Error Handling**: Graceful error handling with user-friendly messages
+- **Loading States**: Smooth loading indicators during data fetching
+
+## Technologies Used
+
+- **React Native** (0.81.5) - Cross-platform mobile framework
+- **Expo** (~54.0.23) - Development platform and toolchain
+- **TypeScript** (~5.9.2) - Type-safe JavaScript
+- **Expo Router** (~6.0.14) - File-based routing system
+- **React Navigation** - Navigation library for screen transitions
+- **PokeAPI** - External REST API for Pokémon data
+
+## Project Structure
+
+```
+app/
+  ├── _layout.tsx      # Root layout with navigation configuration
+  ├── index.tsx        # Main Pokémon list screen
+  └── pok_details.tsx  # Pokémon detail view screen
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn package manager
+- Expo CLI (optional, can use npx)
+- iOS Simulator (for macOS) or Android Emulator, or Expo Go app on a physical device
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd Pokemon-Explorer-React-Native
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Start the development server:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. Run on your preferred platform:
+   - Press `i` for iOS Simulator
+   - Press `a` for Android Emulator
+   - Scan the QR code with Expo Go app on your physical device
+   - Press `w` to open in web browser
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Development
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+This project uses Expo's file-based routing system. The main application screens are located in the `app/` directory:
 
-## Get a fresh project
+- `app/index.tsx` - Entry point displaying the Pokémon list
+- `app/pok_details.tsx` - Detail screen for individual Pokémon information
 
-When you're ready, run:
+### Key Learning Concepts Demonstrated
 
-```bash
-npm run reset-project
-```
+- React Hooks (useState, useEffect, useMemo)
+- TypeScript interfaces and type safety
+- API integration with async/await and error handling
+- React Native components (ScrollView, Image, TouchableOpacity, etc.)
+- Navigation with Expo Router
+- State management and data filtering
+- Responsive styling with StyleSheet
+- Loading and error state management
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## API Integration
 
-## Learn more
+This application integrates with the [PokeAPI](https://pokeapi.co/), a free RESTful API that provides comprehensive Pokémon data. The app fetches:
 
-To learn more about developing your project with Expo, look at the following resources:
+- Pokémon list with pagination
+- Individual Pokémon details including sprites, stats, types, and species information
+- Error handling for network failures and API errors
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Future Enhancements
 
-## Join the community
+Potential improvements for future iterations:
+- Pagination for loading more Pokémon
+- Favorites/bookmarking functionality
+- Offline data caching
+- Animation transitions
+- Additional filtering options
+- Comparison feature between Pokémon
 
-Join our community of developers creating universal apps.
+## License
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This project is for educational purposes and personal learning.
+
+## Acknowledgments
+
+- [PokeAPI](https://pokeapi.co/) for providing the comprehensive Pokémon data API
+- [Expo](https://expo.dev/) for the excellent development platform and documentation
+- [React Native Tutorial](https://www.youtube.com/watch?v=BUXnASp_WyQ) - Tutorial that helped guide the learning process for this project
+- [Mobile Pokedex App Design](https://dribbble.com/shots/16833947-Mobile-Pokedex-App-Design-Exploration) - Design inspiration and reference from Dribbble
