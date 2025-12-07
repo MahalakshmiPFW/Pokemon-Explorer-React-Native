@@ -15,7 +15,7 @@ export default function RootLayout() {
         name="pok_details" 
         options={{ 
           title: "Pokemon Details", 
-          headerBackButtonDisplayMode: "minimal",
+          headerShown: false, // Hide header since we use custom header with back button
           presentation: "formSheet", // Use formSheet presentation style which shows a modal-like screen
           sheetAllowedDetents: [0.3, 0.5, 0.7], // Define detents for the sheet for different heights
           sheetGrabberVisible: true, // Show grabber for better UX (indicates the screen can be swiped down)

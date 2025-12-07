@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Link } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Image,
-  ScrollView,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -11,92 +12,60 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FilterPanel } from "../components/FilterPanel";
+import { PokemonCard } from "../components/PokemonCard";
+import { SkeletonLoader } from "../components/SkeletonLoader";
+import { useDebounce } from "../hooks/useDebounce";
+import { useFavorites } from "../hooks/useFavorites";
+import { API_CONFIG } from "../utils/constants";
+import { FilterMode, Pokemon, PokemonListItem } from "../utils/types";
 
-interface Pokemon {
-  name: string;
-  id: number;
-  image: string;
-  imageBack: string;
-  baseExperience: number;
-  types: PokemonType[];
-}
-
-// We will also define an interface for the PokemonType object that we will be fetching from the API. This will help us to type our state variable and make sure that we are getting the correct data from the API.
-interface PokemonType {
-  type: {
-    name: string;
-    url: string;
-  }
-}
-// Data returned from the first list call includes the url for details
-interface PokemonListItem {
-  name: string;
-  url: string;
-}
-
-// based on the type we could define the colors we want to use for each type
-//an object that would return the color that we should use based on the type of pokemon
-const colorsByType: Record<string, string> = {
-  normal: "#A8A77A",
-  fire: "#EE8130",
-  water: "#6390F0",
-  electric: "#F7D02C",
-  grass: "#7AC74C",
-  ice: "#96D9D6",
-  fighting: "#C22E28",
-  poison: "#A33EA1",
-  ground: "#E2BF65",
-  flying: "#A98FF3",
-  psychic: "#F95587",
-  bug: "#A6B91A",
-  rock: "#B6A136",
-  ghost: "#735797",
-  dragon: "#6F35FC",
-  dark: "#705746",
-  steel: "#B7B7CE",
-  fairy: "#D685AD",
-};
-
+/**
+ * Main Pokémon list screen
+ * Displays a searchable, filterable list of Pokémon with infinite scroll
+ */
 export default function Index() {
-  // we will use the useState hook to store the list of pokemons in state. We will initialize it as undefined, and then set it to the data we get from the API when we fetch it.
-  // pokemons is the actual value of the variable and setPokemons is the function that we will use to update the value of pokemons. We will call this function when we get the data from the API and want to store it in state.
+  // State management
   const [pokemons, setPokemons] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterMode, setFilterMode] = useState<"name" | "type" | "power">("name");
-  const [filterOpen, setFilterOpen] = useState(false); // toggles the little filter popover
-
-  // we will use the useEffect hook to fetch the data from the API when the component mounts. This will allow us to run the code that fetches the data when the screen loads.
-  // we will also use the useEffect hook to log the first pokemon in the list to the console, so we can see what data we are getting from the API.
-  console.log(JSON.stringify(pokemons[0], null, 2));
+  const [filterMode, setFilterMode] = useState<FilterMode>("name");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  //when i load the app, i want to fetch the list of pokemon from the pokeapi and store it in state. I will use react hooks to do this. 
-  // I will use the useEffect hook to fetch the data when the component mount (allows us to run code when the screen mounts), and I will 
-  // use the useState hook to store the data in state (allows us to save the data in a state variable that we can then display on screen).
-  useEffect(() => {
-    // fetch the list of pokemons from the pokeapi
-    fetchPokemons();
-  }, []);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  async function fetchPokemons() {
+  // Custom hooks
+  const debouncedSearch = useDebounce(search, 300); // Wait 300ms after user stops typing
+  const { toggleFavorite, isFavorite } = useFavorites();
+
+  // Fetch Pokémon data from API
+  const fetchPokemons = useCallback(async (pageToFetch: number, reset = false) => {
     try {
-      setError(null);
-      // fetch is a function that allows us to hit an api. It takes an url as a parameter and then some request info (like method, headers, body, etc). It returns a response object that we can then parse to get the data we need.
-      // It is a simple GET request
+      if (reset) {
+        setHasMore(true);
+        setError(null);
+      }
+
+      const offset = (pageToFetch - 1) * API_CONFIG.POKEMON_LIMIT;
+
+      // Fetch list of Pokémon
       const response = await fetch(
-        "https://pokeapi.co/api/v2/pokemon/?limit=25"
+        `${API_CONFIG.BASE_URL}/pokemon/?limit=${API_CONFIG.POKEMON_LIMIT}&offset=${offset}`
       );
 
       if (!response.ok) {
-        throw new Error(`List request failed: ${response.status}`);
+        throw new Error(`Request failed: ${response.status}`);
       }
 
-      // once we get a response, its going to come in a JSON format
-      //so we can abstract the data and get the results property which is an array of pokemons (by using await).
       const data = await response.json();
 
-      // we will use Promise.allSettled to fetch the details of each pokemon in parallel. If any single request fails, we still show the rest.
+      // Check if there are more Pokémon to load
+      setHasMore(data.next !== null);
+
+      // Fetch detailed information for each Pokémon in parallel
       const detailResults = await Promise.allSettled(
         data.results.map(async (pokemon: PokemonListItem) => {
           const res = await fetch(pokemon.url);
@@ -107,40 +76,74 @@ export default function Index() {
           return {
             name: pokemon.name,
             id: details.id,
-            image: details.sprites.front_default, //main sprite of the pokemon
-            imageBack: details.sprites.back_default, //back sprite of the pokemon
-            baseExperience: details.base_experience, // handy power-ish metric from the API
-            types: details.types //array of types of the pokemon
-          };
+            image: details.sprites.front_default,
+            imageBack: details.sprites.back_default,
+            baseExperience: details.base_experience,
+            types: details.types,
+          } as Pokemon;
         })
       );
 
+      // Extract successfully fetched Pokémon
       const detailedPokemons = detailResults
         .filter((result): result is PromiseFulfilledResult<Pokemon> => result.status === "fulfilled")
         .map((result) => result.value);
 
-      console.log("Detailed Pokemons: ", detailedPokemons);
+      // Append or replace Pokémon based on pagination
+      if (reset || pageToFetch === 1) {
+        setPokemons(detailedPokemons);
+      } else {
+        setPokemons((prev) => [...prev, ...detailedPokemons]);
+      }
 
-      setPokemons(detailedPokemons);
       setLoading(false);
-    } catch(e) {
-      console.log("Error fetching pokemons: ", e);
+      setLoadingMore(false);
+      setRefreshing(false);
+    } catch (e) {
+      console.error("Error fetching pokemons: ", e);
+      setError("Could not reach PokeAPI. Please check your network and try again.");
       setLoading(false);
-      setError("Could not reach PokeAPI. Please check your network and pull to refresh.");
+      setLoadingMore(false);
+      setRefreshing(false);
     }
-  }
+  }, []);
 
-  // derive a filtered list so we only render once per change
+  // Initial data fetch
+  useEffect(() => {
+    fetchPokemons(1, true);
+  }, [fetchPokemons]);
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPage(1);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    fetchPokemons(1, true);
+  }, [fetchPokemons]);
+
+  // Load more Pokémon when scrolling to bottom
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !loading) {
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPokemons(nextPage, false);
+    }
+  }, [loadingMore, hasMore, loading, page, fetchPokemons]);
+
+  // Filter and sort Pokémon based on search and filter mode
   const filteredPokemons = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = debouncedSearch.trim().toLowerCase();
+    
+    // Filter by search term (name or ID)
     const bySearch = term
       ? pokemons.filter((pokemon) =>
-        pokemon.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-        String(pokemon.id).includes(search.trim())
-      )
+          pokemon.name.toLowerCase().includes(term) ||
+          String(pokemon.id).includes(term)
+        )
       : pokemons;
 
-    // Sort based on chosen filter mode so the user can pick how to browse.
+    // Sort based on selected filter mode
     const sorted = [...bySearch].sort((a, b) => {
       if (filterMode === "name") {
         return a.name.localeCompare(b.name);
@@ -151,134 +154,192 @@ export default function Index() {
         const byType = typeA.localeCompare(typeB);
         return byType !== 0 ? byType : a.name.localeCompare(b.name);
       }
-      // "power" mode: higher base experience first
+      // "power" mode: sort by base experience (highest first)
       return b.baseExperience - a.baseExperience;
     });
 
     return sorted;
-  }, [pokemons, search, filterMode]);
+  }, [pokemons, debouncedSearch, filterMode]);
 
-  // small helper to capitalize pokemon names for display
-  const prettyName = (name: string) =>
-    name.charAt(0).toUpperCase() + name.slice(1);
-  
+  // Handle filter mode change
+  const handleFilterChange = useCallback((mode: FilterMode) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFilterMode(mode);
+  }, []);
+
+  // Handle search input clear
+  const handleClearSearch = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSearch("");
+  }, []);
+
+  // Memoized key extractor for FlatList performance
+  const keyExtractor = useCallback((item: Pokemon) => item.name, []);
+
+  // Render individual Pokémon card - memoized for performance
+  const renderPokemonCard = useCallback(
+    ({ item }: { item: Pokemon }) => (
+      <PokemonCard
+        pokemon={item}
+        isFavorite={isFavorite(item.id)}
+        onToggleFavorite={toggleFavorite}
+      />
+    ),
+    [isFavorite, toggleFavorite]
+  );
+
+  // Render footer with loading indicator
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#2F3E46" />
+        <Text style={styles.footerText}>Loading more Pokémon...</Text>
+      </View>
+    );
+  }, [loadingMore]);
+
+  // Render empty state
+  const renderEmpty = useCallback(() => {
+    if (loading) {
+      return <SkeletonLoader />;
+    }
+
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle" size={48} color="#FF6B6B" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchPokemons(1, true)}
+            accessibilityLabel="Retry loading Pokémon"
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (filteredPokemons.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="search" size={48} color="#8BA0AE" />
+          <Text style={styles.emptyText}>No Pokémon found</Text>
+          <Text style={styles.emptySubtext}>
+            Try adjusting your search or filter
+          </Text>
+        </View>
+      );
+    }
+
+    return null;
+  }, [loading, error, filteredPokemons.length, fetchPokemons]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
+      <View style={styles.container}>
+        {/* Header Section */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hi there! 👋</Text>
-          <Text style={styles.title}>Pokemon Explorer</Text>
+          <Text style={styles.greeting}>Welcome to the world of Pokémon! 👋 </Text>
+          <Text style={styles.title}>Pokémon Explorer</Text>
           <Text style={styles.subtitle}>
-            Welcome to your cozy Pokémon corner—search by name or National number and let's catch 'em all.
+            Search by name or number and discover your favorite Pokémon
           </Text>
         </View>
 
+        {/* Search Bar */}
         <View style={styles.searchRow}>
           <Ionicons name="search" size={18} color="#8BA0AE" />
           <TextInput
-            placeholder="Name or number"
+            placeholder="Search by name or number"
             placeholderTextColor="#8BA0AE"
             value={search}
             onChangeText={setSearch}
             style={styles.searchInput}
+            accessibilityLabel="Search Pokémon"
+            clearButtonMode="while-editing"
           />
+          {search.length > 0 && (
+            <TouchableOpacity
+              onPress={handleClearSearch}
+              style={styles.clearButton}
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={20} color="#8BA0AE" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            onPress={() => setFilterOpen((prev) => !prev)}
-            style={styles.filterBadge}
-            accessibilityLabel="Toggle filters"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setFilterOpen((prev) => !prev);
+            }}
+            style={[
+              styles.filterBadge,
+              filterOpen && styles.filterBadgeActive,
+            ]}
+            accessibilityLabel="Toggle filter options"
           >
-            <Ionicons name="options" size={18} color="#2F3E46" />
+            <Ionicons
+              name="options"
+              size={18}
+              color={filterOpen ? "#2F3E46" : "#5f7381"}
+            />
           </TouchableOpacity>
         </View>
 
-        {filterOpen && (
-          <View style={styles.filterPanel}>
-            <Text style={styles.filterTitle}>Filter by</Text>
-            <View style={styles.filterRow}>
-              {[
-                { key: "name", label: "Name" },
-                { key: "type", label: "Type" },
-                { key: "power", label: "Most Powerful" },
-              ].map((option) => {
-                const active = filterMode === option.key;
-                return (
-                  <TouchableOpacity
-                    key={option.key}
-                    onPress={() => {
-                      setFilterMode(option.key as typeof filterMode);
-                      setFilterOpen(false); // close after picking
-                    }}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        active && styles.filterChipTextActive,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
+        {/* Filter Panel */}
+        <FilterPanel
+          filterMode={filterMode}
+          onFilterChange={handleFilterChange}
+          isOpen={filterOpen}
+          onClose={() => setFilterOpen(false)}
+        />
 
-        {loading && !error && (
-          <Text style={styles.status}>Loading pokémons…</Text>
-        )}
-        {!!error && <Text style={styles.error}>{error}</Text>}
-        {!loading && filteredPokemons.length === 0 && !error && (
-          <Text style={styles.status}>No pokémons match your search.</Text>
-        )}
-
-        <View style={styles.grid}>
-          {filteredPokemons.map((pokemon) => {
-            const mainType = pokemon.types[0]?.type.name;
-            const cardColor = `${colorsByType[mainType] || "#A0AEC0"}33`; // light tint background
-
-            return (
-              <Link
-                key={pokemon.name}
-                href={{
-                  pathname: "/pok_details",
-                  params: { name: pokemon.name, type: mainType },
-                }}
-                style={[styles.card, { backgroundColor: cardColor }]}
-              >
-                <Text style={styles.cardName}>{prettyName(pokemon.name)}</Text>
-                <Image
-                  source={{ uri: pokemon.image }}
-                  style={styles.cardImage}
-                  resizeMode="contain"
-                />
-              </Link>
-            );
-          })}
-        </View>
-      </ScrollView>
+        {/* Pokémon List */}
+        <FlatList
+          data={filteredPokemons}
+          renderItem={renderPokemonCard}
+          keyExtractor={keyExtractor}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#2F3E46"
+            />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmpty}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={10}
+          updateCellsBatchingPeriod={50}
+        />
+      </View>
     </SafeAreaView>
   );
 }
 
-//This takes an object of styles and you then start defining your styles. You can then use these styles in your components by referencing the style object 
-// and the name of the style you want to use. For ex., if you have a style called container, you can use it in your component like this: style={styles.container}.
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#d7e4eb",
   },
-  page: {
+  container: {
     flex: 1,
-    backgroundColor: "#d7e4eb",
-  },
-  pageContent: {
-    padding: 18,
-    gap: 16,
+    paddingHorizontal: 18,
+    paddingTop: 18,
   },
   header: {
     gap: 6,
+    marginBottom: 16,
   },
   greeting: {
     fontSize: 14,
@@ -303,14 +364,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 10,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: "#2F3E46",
+  },
+  clearButton: {
+    padding: 4,
   },
   filterBadge: {
     width: 34,
@@ -320,76 +387,59 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  filterPanel: {
-    backgroundColor: "#eef4f8",
-    borderRadius: 14,
-    padding: 12,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "#d2dee7",
+  filterBadgeActive: {
+    backgroundColor: "#a8b9c6",
   },
-  filterTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#5f7381",
-    letterSpacing: 0.4,
-  },
-  filterRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 4,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: "#eef4f8",
-    borderWidth: 1,
-    borderColor: "#d2dee7",
-  },
-  filterChipActive: {
-    backgroundColor: "#c9d7e1",
-    borderColor: "#a8b9c6",
-  },
-  filterChipText: {
-    color: "#5f7381",
-    fontWeight: "700",
-  },
-  filterChipTextActive: {
-    color: "#2F3E46",
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  listContent: {
+    paddingBottom: 20,
     gap: 12,
+  },
+  row: {
     justifyContent: "space-between",
+    gap: 12,
   },
-  card: {
-    width: "48%",
-    borderRadius: 18,
-    padding: 12,
-    gap: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
+    gap: 8,
   },
-  cardName: {
-    fontSize: 16,
+  footerText: {
+    color: "#5f7381",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    alignItems: "center",
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 18,
     fontWeight: "700",
     color: "#2F3E46",
   },
-  cardImage: {
-    width: "100%",
-    height: 110,
-  },
-  error: {
-    color: "red",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  status: {
-    textAlign: "center",
+  emptySubtext: {
+    fontSize: 14,
     color: "#5f7381",
+    textAlign: "center",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#FF6B6B",
     fontWeight: "600",
+    textAlign: "center",
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#2F3E46",
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
