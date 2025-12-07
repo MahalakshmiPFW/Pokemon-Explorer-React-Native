@@ -1,4 +1,4 @@
-# Pokemon Explorer
+# Hi there! Welcome to Pokemon Explorer
 
 A React Native mobile application built with Expo that allows users to explore and discover Pokémon from the PokeAPI. This project was developed as a learning exercise to gain hands-on experience with React Native, TypeScript, and mobile app development.
 
