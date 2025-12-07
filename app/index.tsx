@@ -66,6 +66,7 @@ export default function Index() {
       setHasMore(data.next !== null);
 
       // Fetch detailed information for each Pokémon in parallel
+      // await Promise.allSettled is used to fetch all Pokémon details in parallel and wait for all of them to be fetched
       const detailResults = await Promise.allSettled(
         data.results.map(async (pokemon: PokemonListItem) => {
           const res = await fetch(pokemon.url);
