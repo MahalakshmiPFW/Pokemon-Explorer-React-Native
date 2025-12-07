@@ -176,7 +176,7 @@ export default function Index() {
   // Memoized key extractor for FlatList performance
   const keyExtractor = useCallback((item: Pokemon) => item.name, []);
 
-  // Render individual Pokémon card - memoized for performance
+  // Render individual Pokémon card - memoized (means it will only re-render if the props change) for performance
   const renderPokemonCard = useCallback(
     ({ item }: { item: Pokemon }) => (
       <PokemonCard
